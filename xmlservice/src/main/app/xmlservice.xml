@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd">
+    <db:generic-config name="IBMiDB2" url="jdbc:as400://ENDPOINT;user=USERNAME;password=USERPASSWORD" driverClassName="com.ibm.as400.access.AS400JDBCDriver" doc:name="Generic Database Configuration">
+        <db:pooling-profile minPoolSize="1"  />
+    </db:generic-config>
+    <sub-flow name="xmlserviceSub_Flow">
+        <message-properties-transformer scope="invocation" doc:name="Set Input Parameters">
+            <add-message-property key="inputForSP_IPC" value="#['NA']"/>
+            <add-message-property key="inputForSP_CTL" value="#['*here']"/>
+            <add-message-property key="inputForSP_CI" value="&lt;?xml version='1.0'?&gt;&lt;script&gt;&lt;pgm name='ZZCALL' lib='XMLSERVICE'&gt;&lt;parm  io='both'&gt;&lt;datatype='1A'var='INCHARA'&gt;a&lt;/data&gt;&lt;/parm&gt;&lt;parm  io='both'&gt;&lt;datatype='1A'var='INCHARB'&gt;b&lt;/data&gt;&lt;/parm&gt;&lt;parm  io='both'&gt;&lt;datatype='7p4'var='INDEC1'&gt;11.1111&lt;/data&gt;&lt;/parm&gt;&lt;parm  io='both'&gt;&lt;datatype='12p2'var='INDEC2'&gt;222.22&lt;/data&gt;&lt;/parm&gt;&lt;parm  io='both'&gt;&lt;ds&gt;&lt;datatype='1A'var='INDS1.DSCHARA'&gt;x&lt;/data&gt;&lt;datatype='1A'var='INDS1.DSCHARB'&gt;y&lt;/data&gt;&lt;datatype='7p4'var='INDS1.DSDEC1'&gt;66.6666&lt;/data&gt;&lt;datatype='12p2'var='INDS1.DSDEC2'&gt;77777.77&lt;/data&gt;&lt;/ds&gt;&lt;/parm&gt;&lt;return&gt;&lt;datatype='10i0'&gt;0&lt;/data&gt;&lt;/return&gt;&lt;/pgm&gt;&lt;/script&gt;"/>
+        </message-properties-transformer>
+        <db:stored-procedure config-ref="IBMiDB2" doc:name="Invoke XMLSERVICE PLUG512K">
+            <db:parameterized-query><![CDATA[{ call XMLSERVICE.PLUG512K(:IPC,:CTL,:CI,:CO) }]]></db:parameterized-query>
+            <db:in-param name="IPC" type="VARCHAR" value="#[flowVars.inputForSP_IPC]"/>
+            <db:in-param name="CTL" type="VARCHAR" value="#[flowVars.inputForSP_CTL]"/>
+            <db:in-param name="CI" type="CLOB" value="#[flowVars.inputForSP_CI]"/>
+            <db:out-param name="CO" type="CLOB"/>
+        </db:stored-procedure>
+        <set-payload value="#[payload.CO.getSubString(1,payload.CO.length())]" doc:name="Materialize CLOB"/>
+        <logger message="#[payload]" level="INFO" doc:name="Logger"/>
+    </sub-flow>
+</mule>
